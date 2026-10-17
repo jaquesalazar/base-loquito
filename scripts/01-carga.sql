@@ -1,4 +1,3 @@
-
 -- Datos iniciales del laboratorio de pruebas CatTube
 
 BEGIN;
@@ -25,7 +24,6 @@ VALUES
     (2, 'Primer video de CatTube', 1800, 210, 1),
     (3, 'Noticias de la comunidad', 950, 125, 1);
 
--- Sincronizar identificadores autogenerados
 SELECT setval(
     pg_get_serial_sequence('usuario', 'id_usuario'),
     (SELECT MAX(id_usuario) FROM usuario)
