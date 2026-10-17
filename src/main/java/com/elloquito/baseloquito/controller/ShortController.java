@@ -1,17 +1,15 @@
-
 package com.elloquito.baseloquito.controller;
 
 import com.elloquito.baseloquito.model.Short;
-import com.elloquito.baseloquito.model.Usuario;
-import com.elloquito.baseloquito.repository.ShortRepository;
-import jakarta.persistence.EntityManager;
+import com.elloquito.baseloquito.service.ShortService;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,14 +18,10 @@ import java.util.List;
 @RequestMapping("/api/shorts")
 public class ShortController {
 
-    private final ShortRepository shortRepository;
-    private final EntityManager entityManager;
+    private final ShortService shortService;
 
-    public ShortController(
-            ShortRepository shortRepository,
-            EntityManager entityManager) {
-        this.shortRepository = shortRepository;
-        this.entityManager = entityManager;
+    public ShortController(ShortService shortService) {
+        this.shortService = shortService;
     }
 
     public record ShortRequest(
@@ -46,33 +40,23 @@ public class ShortController {
     ) {}
 
     @GetMapping
-    @Transactional(readOnly = true)
     public List<ShortResponse> obtenerShorts() {
-        return shortRepository.findAll()
+        return shortService.obtenerShorts()
                 .stream()
                 .map(this::convertirRespuesta)
                 .toList();
     }
 
     @PostMapping
-    @Transactional
     public ResponseEntity<ShortResponse> crearShort(
             @Valid @RequestBody ShortRequest datos) {
 
-        Usuario usuario = entityManager.find(
-                Usuario.class, datos.idUsuario());
-
-        if (usuario == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Short shortNuevo = new Short();
-        shortNuevo.setTitulo(datos.titulo());
-        shortNuevo.setVistas(datos.vistas());
-        shortNuevo.setLikes(datos.likes());
-        shortNuevo.setUsuario(usuario);
-
-        Short guardado = shortRepository.save(shortNuevo);
+        Short guardado = shortService.crearShort(
+                datos.titulo(),
+                datos.vistas(),
+                datos.likes(),
+                datos.idUsuario()
+        );
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(convertirRespuesta(guardado));
