@@ -6,29 +6,54 @@
 
 Para el laboratorio de pruebas de CatTube se utilizó PostgreSQL 17 como sistema gestor de base de datos, pgAdmin 4 para su administración, Postman para las pruebas de la API REST y Visual Studio Code para desarrollar el backend con Java y Spring Boot.
 
-La base de datos `loquito` se creó mediante pgAdmin 4. También se configuró la conexión desde Spring Boot y se definieron las entidades necesarias para generar las tablas.
+La base de datos `loquito` se creó mediante pgAdmin 4. Posteriormente, se definieron manualmente las tablas `usuarios` y `videos` mediante instrucciones SQL. También se configuró la conexión desde Spring Boot y se adaptaron las entidades Java para representar la estructura de PostgreSQL.
 
 **Archivos utilizados en Visual Studio Code:**
 
 | Archivo | Función |
 |---|---|
 | `application.properties` | Configura la conexión a PostgreSQL, la base de datos `loquito`, el puerto `5433` y las propiedades de Hibernate. |
-| `Usuario.java` | Define la entidad correspondiente a la tabla `usuario`, con los campos `id_usuario`, `seguidores`, `dinero`, `influencia` y `cohesion`. |
-| `Short.java` | Define la entidad correspondiente a la tabla `short`, con los campos `id_video`, `titulo`, `vistas`, `likes` y la relación con `usuario`. |
-| `ShortRepository.java` | Permite realizar operaciones de consulta y persistencia sobre la tabla `short` mediante Spring Data JPA. |
-| `UsuarioRepository.java` | Permite realizar operaciones de consulta y persistencia sobre la tabla `usuario` mediante Spring Data JPA. |
-| `ShortService.java` | Contiene la lógica para consultar y registrar shorts, incluyendo la validación de existencia del usuario asociado. |
+| `Usuario.java` | Define la entidad correspondiente a la tabla `usuarios`, con los campos `id_usuario`, `username`, `seguidores`, `dinero` y `cohesion`. |
+| `Video.java` | Define la entidad correspondiente a la tabla `videos`, con sus campos de información, contadores, fecha de creación y relación con `usuarios`. |
+| `VideoRepository.java` | Permite realizar operaciones de consulta y persistencia sobre la tabla `videos` mediante Spring Data JPA. |
+| `UsuarioRepository.java` | Permite realizar operaciones de consulta y persistencia sobre la tabla `usuarios` mediante Spring Data JPA. |
+| `VideoService.java` | Contiene la lógica para consultar y registrar videos, incluyendo la validación de existencia del usuario asociado. |
 | `UsuarioService.java` | Contiene la lógica para consultar y registrar usuarios en PostgreSQL. |
-| `ShortController.java` | Implementa los endpoints GET y POST para consultar y registrar shorts. |
+| `VideoController.java` | Implementa los endpoints GET y POST para consultar y registrar videos. |
 | `UsuarioController.java` | Implementa los endpoints GET y POST para consultar y registrar usuarios. |
 
-**Proceso de creación de las tablas**
+**Estructura de las tablas**
 
-Las tablas `usuario` y `short` se generaron automáticamente en PostgreSQL mediante Hibernate, utilizando las entidades Java y la configuración `spring.jpa.hibernate.ddl-auto=update`.
+La base de datos contiene dos tablas relacionadas mediante la llave foránea `id_usuario`.
 
-La tabla `usuario` contiene la información del perfil de El loquito, mientras que `short` almacena sus videos cortos. Ambas tablas están relacionadas mediante la llave foránea `id_usuario`, que permite asociar cada short con su usuario correspondiente.
+La tabla `usuarios` almacena la información del perfil de CatTube y contiene los siguientes campos:
 
-Después de iniciar Spring Boot, se verificó en pgAdmin que las tablas y su relación se hubieran creado correctamente.
+- `id_usuario`: identificador principal autogenerado.
+- `username`: nombre del usuario, obligatorio.
+- `seguidores`: cantidad de seguidores.
+- `dinero`: cantidad de dinero.
+- `cohesion`: valor de cohesión.
+
+La tabla `videos` almacena la información de los videos publicados y contiene:
+
+- `id_video`: identificador principal autogenerado.
+- `likes`: cantidad de likes.
+- `titulo`: título del video.
+- `vistas`: cantidad de visualizaciones.
+- `id_usuario`: identificador del usuario propietario.
+- `tag`: categoría o etiqueta del video.
+- `caption`: descripción del video, obligatoria.
+- `hashtags`: etiquetas asociadas al video.
+- `video_url`: dirección del video, obligatoria.
+- `comments`: cantidad de comentarios.
+- `shares`: cantidad de veces compartido.
+- `created_at`: fecha de creación generada automáticamente por PostgreSQL.
+
+La relación se establece mediante una llave foránea desde `videos.id_usuario` hacia `usuarios.id_usuario`. Se configuró la opción `ON DELETE CASCADE` para que, al eliminar un usuario, también se eliminen los videos asociados.
+
+**Configuración de Hibernate**
+
+Las tablas se crearon manualmente en PostgreSQL mediante pgAdmin 4. En la configuración de Spring Boot se estableció la propiedad `spring.jpa.hibernate.ddl-auto=validate`, con la finalidad de comprobar que las entidades Java coincidan con la estructura existente en la base de datos, sin permitir que Hibernate modifique automáticamente las tablas.
 
 ### 1. Scripts de Carga y Limpieza (Data Provisioning)
 
@@ -36,13 +61,15 @@ Se prepararon los scripts `01-carga.sql` y `02-limpieza.sql`, ubicados en la car
 
 **Script de carga (`01-carga.sql`)**
 
-Este script permite insertar los registros iniciales de CatTube en la base de datos. Registra un usuario correspondiente a El loquito, identificado con el ID 1, y tres shorts asociados mediante la llave foránea `id_usuario`.
+Este script permite insertar los registros iniciales de CatTube en la base de datos. Registra un usuario correspondiente a El loquito y tres videos asociados mediante la llave foránea `id_usuario`.
 
-Además, utiliza la función `setval()` de PostgreSQL para sincronizar los identificadores autogenerados con los registros insertados, evitando conflictos al registrar nuevos datos posteriormente.
+El identificador del usuario se obtiene mediante `RETURNING id_usuario`, evitando tener que establecer manualmente el valor de la llave primaria. Los identificadores de usuarios y videos son generados automáticamente por PostgreSQL.
+
+Además, los campos `comments` y `shares` utilizan los valores predeterminados definidos en la tabla, mientras que `created_at` recibe automáticamente la fecha de creación.
 
 **Script de limpieza (`02-limpieza.sql`)**
 
-Este script permite eliminar todos los registros almacenados en las tablas `short` y `usuario` mediante la instrucción `TRUNCATE TABLE`, utilizando `RESTART IDENTITY` para reiniciar los identificadores.
+Este script permite eliminar los registros almacenados en las tablas `videos` y `usuarios` mediante la instrucción `TRUNCATE TABLE`, utilizando `RESTART IDENTITY` para reiniciar los identificadores y `CASCADE` para considerar la relación entre ambas tablas.
 
 La operación se realiza dentro de una transacción mediante las instrucciones `BEGIN` y `COMMIT`.
 
@@ -50,110 +77,104 @@ La limpieza elimina los registros, pero conserva la estructura de las tablas, su
 
 **Ejecución y verificación de los scripts**
 
-Durante las pruebas de la API REST se registraron datos adicionales mediante Postman. Estos registros se conservaron temporalmente como evidencia del funcionamiento de las operaciones de persistencia.
+Los scripts se ejecutan mediante Query Tool de pgAdmin 4, utilizando la conexión a la base de datos `loquito`.
 
-Una vez obtenidas las capturas correspondientes, se ejecutó el script `02-limpieza.sql` mediante Query Tool de pgAdmin 4.
+Después de ejecutar `02-limpieza.sql`, se pueden realizar consultas `SELECT` para comprobar que ambas tablas se encuentran vacías.
 
-La ejecución finalizó correctamente y posteriormente se realizaron consultas `SELECT` para comprobar que las tablas `short` y `usuario` se encontraban vacías.
+Posteriormente, se ejecuta `01-carga.sql` para recuperar los datos iniciales del laboratorio.
 
-Después, se ejecutó nuevamente el script `01-carga.sql` para recuperar los datos iniciales del laboratorio.
+La cantidad de registros esperada después de la carga inicial es la siguiente:
 
-Finalmente, se verificó mediante consultas SQL que la base de datos contenía nuevamente un usuario, correspondiente a El loquito, y tres shorts asociados.
+| Tabla | Registros esperados |
+|---|---:|
+| `usuarios` | 1 |
+| `videos` | 3 |
 
-| Etapa | Usuarios | Shorts | Resultado |
-|---|---:|---:|---|
-| Después de las pruebas con Postman | 2 | 6 | Registros iniciales y de prueba almacenados |
-| Después de ejecutar `02-limpieza.sql` | 0 | 0 | Tablas vacías e identificadores reiniciados |
-| Después de ejecutar `01-carga.sql` | 1 | 3 | Datos iniciales recuperados correctamente |
+Estas cantidades corresponden a los datos definidos en el script de carga.
 
 **Evidencias de carga y limpieza**
 
-Se documentaron las siguientes actividades mediante capturas de pantalla:
+Se documentarán las siguientes actividades mediante capturas de pantalla:
 
 - Contenido del script de carga `01-carga.sql`.
 - Consulta de los registros iniciales almacenados en PostgreSQL.
-- Ejecución exitosa del script de limpieza `02-limpieza.sql`.
+- Ejecución del script de limpieza `02-limpieza.sql`.
 - Verificación de las tablas vacías después de la limpieza.
-- Consulta final para comprobar la recuperación del usuario y sus tres shorts.
+- Consulta final para comprobar la recuperación del usuario y sus tres videos.
 
 Estas evidencias permiten comprobar el funcionamiento de los scripts SQL y la posibilidad de restablecer los datos iniciales para repetir las pruebas del laboratorio.
 
 ### 2. Capturas o Logs de Ejecución de Queries
 
-Se realizaron pruebas de consulta y registro de información mediante los servicios REST de Spring Boot, utilizando el navegador web y Postman.
+Se realizarán pruebas de consulta y registro de información mediante los servicios REST de Spring Boot, utilizando Postman y el navegador web.
 
 **Pruebas GET**
 
-Se consultaron los siguientes endpoints:
+Se consultarán los siguientes endpoints:
 
-- `GET /api/shorts`: permitió obtener los shorts almacenados en PostgreSQL.
-- `GET /api/usuarios`: permitió obtener los usuarios registrados en la base de datos.
+- `GET /api/videos`: permitirá obtener los videos almacenados en PostgreSQL.
+- `GET /api/usuarios`: permitirá obtener los usuarios registrados en la base de datos.
 
-Ambas peticiones devolvieron respuestas HTTP `200 OK`.
+Se espera que ambas peticiones devuelvan respuestas HTTP `200 OK`.
 
 **Pruebas POST**
 
-Mediante Postman se enviaron peticiones para registrar nuevos datos:
+Mediante Postman se enviarán peticiones para registrar nuevos datos:
 
-- `POST /api/shorts`: permitió registrar un nuevo short asociado a un usuario existente.
-- `POST /api/usuarios`: permitió registrar un nuevo usuario con sus valores de seguidores, dinero, influencia y cohesión.
+- `POST /api/videos`: permitirá registrar un nuevo video asociado a un usuario existente.
+- `POST /api/usuarios`: permitirá registrar un nuevo usuario con su nombre de usuario y sus valores de seguidores, dinero y cohesión.
 
-En ambos casos, el servidor respondió con el código HTTP `201 Created`, confirmando la creación de los registros.
+Se espera que ambas peticiones devuelvan el código HTTP `201 Created`, confirmando la creación de los registros.
 
 **Verificación de persistencia**
 
-Después de ejecutar las peticiones POST, se consultaron nuevamente los endpoints desde el navegador y se revisaron las tablas en pgAdmin 4.
+Después de ejecutar las peticiones POST, se consultarán nuevamente los endpoints y se revisarán las tablas en pgAdmin 4.
 
-Se comprobó que los registros enviados desde Postman permanecían almacenados en PostgreSQL.
-
-Durante esta etapa se verificó la existencia de seis shorts y dos usuarios, incluyendo los registros creados para las pruebas.
-
-Posteriormente, estos registros se eliminaron mediante el script de limpieza y se recuperaron únicamente los datos iniciales mediante el script de carga.
+Se comprobará que los registros enviados desde Postman permanezcan almacenados en PostgreSQL.
 
 **Evidencias**
 
-Las capturas de Postman, las respuestas JSON del navegador y las consultas realizadas en PostgreSQL se almacenaron en la carpeta `docs/evidencias/`.
+Las capturas de Postman, las respuestas JSON del navegador y las consultas realizadas en PostgreSQL se almacenarán en la carpeta `docs/evidencias/`.
 
 ### 3. Logs del Servidor Backend (Application Logs)
 
 Se configuraron registros de ejecución para visualizar las consultas SQL, los parámetros enviados y las métricas de las peticiones HTTP.
 
-Durante las pruebas iniciales de shorts se obtuvieron los siguientes valores:
+La configuración de logs de Hibernate permite identificar las consultas `SELECT` y las operaciones `INSERT` realizadas sobre PostgreSQL.
 
-| Métrica | GET | POST |
-|---|---|---|
-| Código HTTP | 200 | 201 |
-| Tiempo de procesamiento | 775 ms | 89 ms |
-| Memoria antes | 61,345 KB | 45,883 KB |
-| Memoria después | 43,984 KB | 52,735 KB |
+Adicionalmente, se verificará el inicio correcto del servidor Spring Boot en el puerto `8080` y la conexión a la base de datos `loquito`.
 
-Los valores de memoria corresponden al uso aproximado del heap de Java durante las peticiones iniciales.
+Los resultados de tiempo de procesamiento y uso de memoria se documentarán mediante capturas o registros obtenidos durante las nuevas pruebas del backend.
 
-Los logs de Hibernate permitieron identificar las consultas `SELECT` y las operaciones `INSERT` realizadas sobre PostgreSQL.
-
-Adicionalmente, se verificó el inicio correcto del servidor Spring Boot en el puerto `8080` y la conexión a la base de datos `loquito`.
+Los valores registrados durante pruebas anteriores corresponden a la implementación previa de las tablas `usuario` y `short`, por lo que no se utilizarán como resultados de rendimiento de la estructura actualizada.
 
 ### 4. Pruebas de la API REST con Postman
 
-Se utilizó Postman para comprobar el funcionamiento de los métodos HTTP GET y POST correspondientes a los recursos de shorts y usuarios.
+Se utilizará Postman para comprobar el funcionamiento de los métodos HTTP GET y POST correspondientes a los recursos de videos y usuarios.
 
-| Método | Endpoint | Resultado esperado | Resultado obtenido |
-|---|---|---|---|
-| GET | `/api/shorts` | Consultar los shorts registrados | 200 OK |
-| POST | `/api/shorts` | Registrar un nuevo short | 201 Created |
-| GET | `/api/usuarios` | Consultar los usuarios registrados | 200 OK |
-| POST | `/api/usuarios` | Registrar un nuevo usuario | 201 Created |
+| Método | Endpoint | Resultado esperado |
+|---|---|---|
+| GET | `/api/videos` | 200 OK |
+| POST | `/api/videos` | 201 Created |
+| GET | `/api/usuarios` | 200 OK |
+| POST | `/api/usuarios` | 201 Created |
 
-Para las peticiones POST se configuró el cuerpo de la solicitud en formato JSON, utilizando la opción `Body → raw → JSON`.
+Para las peticiones POST se configurará el cuerpo de la solicitud en formato JSON, utilizando la opción `Body → raw → JSON`.
 
-**Ejemplo de registro de un short:**
+**Ejemplo de registro de un video:**
 
 ```json
 {
-  "titulo": "Mi primer short desde Postman",
+  "titulo": "Mi primer video desde Postman",
   "vistas": 1500,
   "likes": 250,
-  "idUsuario": 1
+  "idUsuario": 1,
+  "tag": "Entretenimiento",
+  "caption": "Este es un video de prueba de CatTube",
+  "hashtags": "#cattube #prueba",
+  "videoUrl": "https://example.com/videos/prueba.mp4",
+  "comments": 10,
+  "shares": 5
 }
 ```
 
@@ -161,29 +182,29 @@ Para las peticiones POST se configuró el cuerpo de la solicitud en formato JSON
 
 ```json
 {
+  "username": "usuario_prueba",
   "seguidores": 2500,
   "dinero": 1000,
-  "influencia": 65,
   "cohesion": 80
 }
 ```
 
-Las respuestas del servidor confirmaron la creación de los registros. Posteriormente, se comprobó su almacenamiento mediante consultas en pgAdmin y las respuestas JSON de los endpoints GET.
+Las respuestas del servidor permitirán comprobar la creación de los registros. Posteriormente, se verificará su almacenamiento mediante consultas en pgAdmin y las respuestas JSON de los endpoints GET.
 
-Estas pruebas permitieron verificar la comunicación entre Postman, Spring Boot y PostgreSQL.
+Estas pruebas permitirán verificar la comunicación entre Postman, Spring Boot y PostgreSQL.
 
-Los resultados de estas pruebas se conservaron mediante capturas de pantalla antes de ejecutar la limpieza de la base de datos.
+Los resultados se conservarán mediante capturas de pantalla y registros de las respuestas HTTP.
 
 ## Resultados
 
-Las pruebas realizadas confirmaron que el backend de CatTube puede consultar y registrar shorts y usuarios en PostgreSQL mediante los métodos HTTP GET y POST.
+La estructura actualizada del backend de CatTube permite trabajar con las tablas `usuarios` y `videos` de PostgreSQL mediante entidades Java, repositorios, servicios y controladores de Spring Boot.
 
-Se verificó el funcionamiento de los controladores, servicios y repositorios, así como la persistencia de los registros y la relación entre las tablas `usuario` y `short`.
+Se adaptaron los modelos y servicios para representar los campos definidos en la base de datos, así como la relación entre los videos y sus usuarios correspondientes.
 
-Las pruebas con Postman fueron satisfactorias y los datos registrados se comprobaron tanto en PostgreSQL como en las respuestas JSON del navegador.
+También se actualizaron los scripts SQL de carga y limpieza para utilizar los nombres de las nuevas tablas y sus respectivos campos.
 
-Asimismo, se comprobó el funcionamiento de los scripts SQL de carga y limpieza. El script de limpieza permitió vaciar ambas tablas y reiniciar sus identificadores, mientras que el script de carga permitió recuperar correctamente los datos iniciales.
+La configuración de Hibernate se estableció en modo `validate`, de manera que la aplicación compruebe la correspondencia entre las entidades Java y la estructura existente en PostgreSQL.
 
-Al finalizar el laboratorio, la base de datos quedó con un usuario correspondiente a El loquito y tres shorts asociados, manteniendo la información necesaria para continuar con el desarrollo del proyecto.
+Las pruebas de integración con Postman, la verificación de persistencia y los resultados de rendimiento deberán repetirse con esta versión del backend para documentar su funcionamiento.
 
 Las pruebas de integración con la interfaz y de funcionamiento offline de la PWA se realizarán posteriormente.
