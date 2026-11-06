@@ -1,4 +1,3 @@
-
 package com.elloquito.baseloquito.model;
 
 import jakarta.persistence.Column;
@@ -9,7 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "usuario")
+@Table(name = "usuarios")
 public class Usuario {
 
     @Id
@@ -17,17 +16,14 @@ public class Usuario {
     @Column(name = "id_usuario")
     private Integer id;
 
-    @Column(nullable = false)
-    private Integer seguidores = 0;
+    private Integer cohesion;
 
-    @Column(nullable = false)
-    private Integer dinero = 0;
+    private Integer dinero;
 
-    @Column(nullable = false)
-    private Integer influencia = 0;
+    private Integer seguidores;
 
-    @Column(nullable = false)
-    private Integer cohesion = 0;
+    @Column(name = "username", nullable = false, length = 50)
+    private String username;
 
     public Usuario() {
     }
@@ -40,12 +36,12 @@ public class Usuario {
         this.id = id;
     }
 
-    public Integer getSeguidores() {
-        return seguidores;
+    public Integer getCohesion() {
+        return cohesion;
     }
 
-    public void setSeguidores(Integer seguidores) {
-        this.seguidores = seguidores;
+    public void setCohesion(Integer cohesion) {
+        this.cohesion = cohesion;
     }
 
     public Integer getDinero() {
@@ -56,19 +52,19 @@ public class Usuario {
         this.dinero = dinero;
     }
 
-    public Integer getInfluencia() {
-        return influencia;
+    public Integer getSeguidores() {
+        return seguidores;
     }
 
-    public void setInfluencia(Integer influencia) {
-        this.influencia = influencia;
+    public void setSeguidores(Integer seguidores) {
+        this.seguidores = seguidores;
     }
 
-    public Integer getCohesion() {
-        return cohesion;
+    public String getUsername() {
+        return username;
     }
 
-    public void setCohesion(Integer cohesion) {
-        this.cohesion = cohesion;
+    public void setUsername(String username) {
+        this.username = username;
     }
 }

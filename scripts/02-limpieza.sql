@@ -1,8 +1,5 @@
--- Limpieza de datos y reinicio de identificadores
-
 BEGIN;
 
-TRUNCATE TABLE short, usuario
-RESTART IDENTITY;
+TRUNCATE TABLE videos, usuarios RESTART IDENTITY CASCADE;
 
 COMMIT;

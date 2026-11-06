@@ -4,9 +4,9 @@ import com.elloquito.baseloquito.model.Usuario;
 import com.elloquito.baseloquito.service.UsuarioService;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
-import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Size;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,17 +25,17 @@ public class UsuarioController {
     }
 
     public record UsuarioRequest(
-            @NotNull @PositiveOrZero Integer seguidores,
-            @NotNull @PositiveOrZero Integer dinero,
-            @NotNull @PositiveOrZero @Max(100) Integer influencia,
-            @NotNull @PositiveOrZero @Max(100) Integer cohesion
+            @NotBlank @Size(max = 50) String username,
+            @PositiveOrZero Integer seguidores,
+            @PositiveOrZero Integer dinero,
+            @PositiveOrZero Integer cohesion
     ) {}
 
     public record UsuarioResponse(
             Integer idUsuario,
+            String username,
             Integer seguidores,
             Integer dinero,
-            Integer influencia,
             Integer cohesion
     ) {}
 
@@ -52,9 +52,9 @@ public class UsuarioController {
             @Valid @RequestBody UsuarioRequest datos) {
 
         Usuario guardado = usuarioService.crearUsuario(
+                datos.username(),
                 datos.seguidores(),
                 datos.dinero(),
-                datos.influencia(),
                 datos.cohesion()
         );
 
@@ -65,9 +65,9 @@ public class UsuarioController {
     private UsuarioResponse convertirRespuesta(Usuario usuario) {
         return new UsuarioResponse(
                 usuario.getId(),
+                usuario.getUsername(),
                 usuario.getSeguidores(),
                 usuario.getDinero(),
-                usuario.getInfluencia(),
                 usuario.getCohesion()
         );
     }
