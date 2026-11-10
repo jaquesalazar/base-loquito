@@ -1,9 +1,7 @@
 package com.elloquito.baseloquito.service;
 
-import com.elloquito.baseloquito.model.Usuario;
 import com.elloquito.baseloquito.model.Video;
 import com.elloquito.baseloquito.repository.VideoRepository;
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -22,9 +20,6 @@ class VideoServiceTest {
 
     @Mock
     private VideoRepository videoRepository;
-
-    @Mock
-    private EntityManager entityManager;
 
     @InjectMocks
     private VideoService videoService;
@@ -48,10 +43,6 @@ class VideoServiceTest {
 
     @Test
     void crearVideoDebeGuardarYDevolverElVideo() {
-        Usuario usuario = new Usuario();
-        usuario.setUsername("el_loquito");
-
-        given(entityManager.find(Usuario.class, 1)).willReturn(usuario);
         given(videoRepository.saveAndFlush(any(Video.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
 
@@ -59,7 +50,6 @@ class VideoServiceTest {
                 "Mi primer video",
                 500,
                 100,
-                1,
                 "Entretenimiento",
                 "Mi primer video en CatTube",
                 "#CatTube",
@@ -71,7 +61,6 @@ class VideoServiceTest {
         assertThat(resultado.getTitulo()).isEqualTo("Mi primer video");
         assertThat(resultado.getVistas()).isEqualTo(500);
         assertThat(resultado.getLikes()).isEqualTo(100);
-        assertThat(resultado.getUsuario()).isSameAs(usuario);
         assertThat(resultado.getTag()).isEqualTo("Entretenimiento");
         assertThat(resultado.getCaption()).isEqualTo("Mi primer video en CatTube");
         assertThat(resultado.getHashtags()).isEqualTo("#CatTube");
@@ -79,8 +68,6 @@ class VideoServiceTest {
         assertThat(resultado.getComments()).isEqualTo(10);
         assertThat(resultado.getShares()).isEqualTo(5);
 
-        verify(entityManager).find(Usuario.class, 1);
         verify(videoRepository).saveAndFlush(any(Video.class));
-        verify(entityManager).refresh(resultado);
     }
 }

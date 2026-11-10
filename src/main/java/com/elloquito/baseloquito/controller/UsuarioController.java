@@ -31,6 +31,10 @@ public class UsuarioController {
             @PositiveOrZero Integer cohesion
     ) {}
 
+    public record AccesoRequest(
+            @NotBlank @Size(max = 50) String username
+    ) {}
+
     public record UsuarioResponse(
             Integer idUsuario,
             String username,
@@ -45,6 +49,15 @@ public class UsuarioController {
                 .stream()
                 .map(this::convertirRespuesta)
                 .toList();
+    }
+
+    @PostMapping("/acceso")
+    public UsuarioResponse accederUsuario(
+            @Valid @RequestBody AccesoRequest datos) {
+
+        Usuario usuario = usuarioService.accederOCrearUsuario(datos.username());
+
+        return convertirRespuesta(usuario);
     }
 
     @PostMapping

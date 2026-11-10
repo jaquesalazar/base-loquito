@@ -1,15 +1,10 @@
 package com.elloquito.baseloquito.service;
 
 import com.elloquito.baseloquito.model.Video;
-import com.elloquito.baseloquito.model.Usuario;
 import com.elloquito.baseloquito.repository.VideoRepository;
 
-import jakarta.persistence.EntityManager;
-
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -17,14 +12,9 @@ import java.util.List;
 public class VideoService {
 
     private final VideoRepository videoRepository;
-    private final EntityManager entityManager;
 
-    public VideoService(
-            VideoRepository videoRepository,
-            EntityManager entityManager) {
-
+    public VideoService(VideoRepository videoRepository) {
         this.videoRepository = videoRepository;
-        this.entityManager = entityManager;
     }
 
     @Transactional(readOnly = true)
@@ -37,7 +27,6 @@ public class VideoService {
             String titulo,
             Integer vistas,
             Integer likes,
-            Integer idUsuario,
             String tag,
             String caption,
             String hashtags,
@@ -45,23 +34,10 @@ public class VideoService {
             Integer comments,
             Integer shares) {
 
-        Usuario usuario = entityManager.find(
-                Usuario.class,
-                idUsuario
-        );
-
-        if (usuario == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "El usuario no existe"
-            );
-        }
-
         Video videoNuevo = new Video();
         videoNuevo.setTitulo(titulo);
-        videoNuevo.setVistas(vistas);
+        videoNuevo.setVistas(vistas != null ? vistas : 0);
         videoNuevo.setLikes(likes != null ? likes : 0);
-        videoNuevo.setUsuario(usuario);
         videoNuevo.setTag(tag);
         videoNuevo.setCaption(caption);
         videoNuevo.setHashtags(hashtags);
@@ -69,10 +45,6 @@ public class VideoService {
         videoNuevo.setComments(comments != null ? comments : 0);
         videoNuevo.setShares(shares != null ? shares : 0);
 
-        Video videoGuardado = videoRepository.saveAndFlush(videoNuevo);
-
-        entityManager.refresh(videoGuardado);
-
-        return videoGuardado;
+        return videoRepository.saveAndFlush(videoNuevo);
     }
 }
