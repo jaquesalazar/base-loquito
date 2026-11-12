@@ -1,5 +1,6 @@
-
 package com.elloquito.baseloquito.service;
+
+// Servicio para generar el crecimiento automático del progreso de cada video.
 
 import com.elloquito.baseloquito.model.JugadorVideo;
 import com.elloquito.baseloquito.model.ProgresoVideo;
@@ -9,17 +10,15 @@ import com.elloquito.baseloquito.repository.ProgresoVideoRepository;
 
 import jakarta.transaction.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.stereotype.Service;
 
 @Service
 public class LikesAutomaticosService {
-
-    private static final int LIKES_POR_MINUTO = 10;
 
     private final JugadorVideoRepository jugadorVideoRepository;
     private final ProgresoVideoRepository progresoVideoRepository;
@@ -38,56 +37,91 @@ public class LikesAutomaticosService {
 
     @Transactional
     public void generarLikesPorMinuto(LocalDateTime momento) {
+
         List<JugadorVideo> asignaciones =
                 jugadorVideoRepository.findAllByOrderByUsuario_IdAscVideo_IdVideoAsc();
 
-        Map<Integer, List<JugadorVideo>> asignacionesPorJugador =
-                asignaciones.stream().collect(Collectors.groupingBy(
-                        asignacion -> asignacion.getUsuario().getId()
-                ));
+        for (JugadorVideo asignacion : asignaciones) {
 
-        int minutoActual = momento.getMinute();
+            ProgresoVideoId id = new ProgresoVideoId(
+                    asignacion.getUsuario().getId(),
+                    asignacion.getVideo().getIdVideo()
+            );
 
-        for (Map.Entry<Integer, List<JugadorVideo>> entrada
-                : asignacionesPorJugador.entrySet()) {
+            ProgresoVideo progreso = progresoVideoRepository.findById(id)
+                    .orElseThrow(() -> new IllegalStateException(
+                            "No existe el progreso de un video asignado"
+                    ));
 
-            List<JugadorVideo> videos = entrada.getValue();
-            int cantidadVideos = videos.size();
+            int seguidoresActuales = asignacion.getUsuario().getSeguidores() != null
+                    ? asignacion.getUsuario().getSeguidores()
+                    : 0;
 
-            int likesBase = LIKES_POR_MINUTO / cantidadVideos;
-            int sobrantes = LIKES_POR_MINUTO % cantidadVideos;
-            int inicioRotacion = minutoActual % cantidadVideos;
+            LocalDateTime ultimaActualizacion = progreso.getUltimaActualizacion();
 
-            for (int i = 0; i < cantidadVideos; i++) {
-                JugadorVideo asignacion = videos.get(i);
+            if (ultimaActualizacion == null) {
+                progreso.setUltimaActualizacion(momento);
+                progreso.setSeguidoresUltimaActualizacion(seguidoresActuales);
+                continue;
+            }
 
-                ProgresoVideoId id = new ProgresoVideoId(
-                        entrada.getKey(),
-                        asignacion.getVideo().getIdVideo()
-                );
+            long minutosPendientes = Duration.between(
+                    ultimaActualizacion,
+                    momento
+            ).toMinutes();
 
-                ProgresoVideo progreso = progresoVideoRepository.findById(id)
-                        .orElseThrow(() -> new IllegalStateException(
-                                "No existe el progreso de un video asignado"
-                        ));
+            if (minutosPendientes <= 0) {
+                continue;
+            }
 
-                int likesExtra = 0;
+            int seguidoresRegistrados =
+                    progreso.getSeguidoresUltimaActualizacion() != null
+                            ? progreso.getSeguidoresUltimaActualizacion()
+                            : 0;
 
-                for (int j = 0; j < sobrantes; j++) {
-                    if (i == (inicioRotacion + j) % cantidadVideos) {
-                        likesExtra = 1;
-                        break;
-                    }
-                }
+            if (seguidoresRegistrados > 0 && seguidoresActuales > 0) {
 
                 int likesActuales = progreso.getLikesAutomaticos() != null
                         ? progreso.getLikesAutomaticos()
                         : 0;
 
-                progreso.setLikesAutomaticos(
-                        likesActuales + likesBase + likesExtra
-                );
+                int vistasActuales = progreso.getVistas() != null
+                        ? progreso.getVistas()
+                        : 0;
+
+                for (long minuto = 0; minuto < minutosPendientes; minuto++) {
+
+                    double multiplicadorLikes =
+                            ThreadLocalRandom.current().nextDouble(0.1, 0.9);
+
+                    double multiplicadorVistas =
+                            ThreadLocalRandom.current().nextDouble(1.0, 5.0);
+
+                    int incrementoLikes = redondearMultiploDeCinco(
+                            seguidoresRegistrados * multiplicadorLikes
+                    );
+
+                    int incrementoVistas = redondearMultiploDeCinco(
+                            seguidoresRegistrados * multiplicadorVistas
+                    );
+
+                    likesActuales += incrementoLikes;
+                    vistasActuales += incrementoVistas;
+                }
+
+                progreso.setLikesAutomaticos(likesActuales);
+                progreso.setVistas(vistasActuales);
             }
+
+            progreso.setUltimaActualizacion(
+                    ultimaActualizacion.plusMinutes(minutosPendientes)
+            );
+
+            progreso.setSeguidoresUltimaActualizacion(seguidoresActuales);
         }
+    }
+
+    private int redondearMultiploDeCinco(double cantidad) {
+        return (int) (Math.round(cantidad / 5.0) * 5);
     }
 }

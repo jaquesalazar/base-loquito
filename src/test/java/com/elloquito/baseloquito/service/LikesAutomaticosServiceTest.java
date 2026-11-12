@@ -1,5 +1,7 @@
 package com.elloquito.baseloquito.service;
 
+// Pruebas del crecimiento automático de likes y vistas por jugador y video.
+
 import com.elloquito.baseloquito.model.JugadorVideo;
 import com.elloquito.baseloquito.model.ProgresoVideo;
 import com.elloquito.baseloquito.model.ProgresoVideoId;
@@ -22,8 +24,8 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.BDDMockito.given;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
 class LikesAutomaticosServiceTest {
@@ -52,74 +54,92 @@ class LikesAutomaticosServiceTest {
                 .willReturn(asignaciones);
 
         org.mockito.Mockito.lenient()
-        .when(progresoVideoRepository.findById(any(ProgresoVideoId.class)))
-        .thenAnswer(invocation -> Optional.ofNullable(
-                progresos.get(invocation.getArgument(0))
-        ));
+                .when(progresoVideoRepository.findById(any(ProgresoVideoId.class)))
+                .thenAnswer(invocation -> Optional.ofNullable(
+                        progresos.get(invocation.getArgument(0))
+                ));
     }
 
     @Test
-    void debeGenerarDiezLikesParaUnVideo() {
-        prepararJugador(1, 1);
+    void cadaVideoDebeGenerarLikesYVistasIndependientemente() {
+        prepararJugador(1, 100, 1, 2);
 
         ejecutar(0);
 
-        assertThat(obtenerLikes(1, 1)).isEqualTo(10);
+        for (Integer idVideo : List.of(1, 2)) {
+            int likes = obtenerLikes(1, idVideo);
+            int vistas = obtenerVistas(1, idVideo);
+
+            assertThat(likes).isBetween(10, 90);
+            assertThat(likes % 5).isZero();
+
+            assertThat(vistas).isBetween(100, 500);
+            assertThat(vistas % 5).isZero();
+        }
     }
 
     @Test
-    void debeRepartirDiezLikesEntreDosVideos() {
-        prepararJugador(1, 1, 2);
+    void debeAcumularElCrecimientoDeLosMinutosPendientes() {
+        prepararJugador(1, 100, 1);
+
+        ProgresoVideo progreso = obtenerProgreso(1, 1);
+        progreso.setUltimaActualizacion(
+                LocalDateTime.of(2026, 11, 9, 0, 58)
+        );
 
         ejecutar(0);
 
-        assertThat(obtenerLikes(1, 1)).isEqualTo(5);
-        assertThat(obtenerLikes(1, 2)).isEqualTo(5);
-        assertThat(totalJugador(1)).isEqualTo(10);
+        int likes = obtenerLikes(1, 1);
+        int vistas = obtenerVistas(1, 1);
+
+        assertThat(likes).isBetween(20, 180);
+        assertThat(likes % 5).isZero();
+
+        assertThat(vistas).isBetween(200, 1000);
+        assertThat(vistas % 5).isZero();
     }
 
     @Test
-    void debeRotarLosLikesSobrantesEntreTresVideos() {
-        prepararJugador(1, 1, 2, 3);
+    void cadaJugadorDebeTenerSuPropioCrecimiento() {
+        prepararJugador(1, 100, 1);
+        prepararJugador(2, 200, 1);
 
         ejecutar(0);
 
-        assertThat(obtenerLikes(1, 1)).isEqualTo(4);
-        assertThat(obtenerLikes(1, 2)).isEqualTo(3);
-        assertThat(obtenerLikes(1, 3)).isEqualTo(3);
-        assertThat(totalJugador(1)).isEqualTo(10);
+        assertThat(obtenerLikes(1, 1)).isBetween(10, 90);
+        assertThat(obtenerVistas(1, 1)).isBetween(100, 500);
 
-        ejecutar(1);
-
-        assertThat(obtenerLikes(1, 1)).isEqualTo(7);
-        assertThat(obtenerLikes(1, 2)).isEqualTo(7);
-        assertThat(obtenerLikes(1, 3)).isEqualTo(6);
-        assertThat(totalJugador(1)).isEqualTo(20);
+        assertThat(obtenerLikes(2, 1)).isBetween(20, 180);
+        assertThat(obtenerVistas(2, 1)).isBetween(200, 1000);
     }
 
     @Test
-    void cadaJugadorDebeRecibirDiezLikesIndependientemente() {
-        prepararJugador(1, 1, 2, 3);
-        prepararJugador(2, 1, 2);
+    void jugadorSinSeguidoresNoDebeGenerarCrecimiento() {
+        prepararJugador(1, 0, 1, 2);
 
         ejecutar(0);
 
-        assertThat(totalJugador(1)).isEqualTo(10);
-        assertThat(totalJugador(2)).isEqualTo(10);
-        assertThat(obtenerLikes(1, 1)).isEqualTo(4);
-        assertThat(obtenerLikes(2, 1)).isEqualTo(5);
+        assertThat(obtenerLikes(1, 1)).isZero();
+        assertThat(obtenerVistas(1, 1)).isZero();
+        assertThat(obtenerLikes(1, 2)).isZero();
+        assertThat(obtenerVistas(1, 2)).isZero();
     }
 
     @Test
-    void jugadorSinVideosNoDebeRecibirLikes() {
+    void jugadorSinVideosNoDebeRecibirCrecimiento() {
         ejecutar(0);
 
         assertThat(progresos).isEmpty();
     }
 
-    private void prepararJugador(Integer idUsuario, Integer... idsVideos) {
+    private void prepararJugador(
+            Integer idUsuario,
+            int seguidores,
+            Integer... idsVideos) {
+
         Usuario usuario = new Usuario();
         usuario.setId(idUsuario);
+        usuario.setSeguidores(seguidores);
 
         for (Integer idVideo : idsVideos) {
             Video video = new Video();
@@ -139,6 +159,10 @@ class LikesAutomaticosServiceTest {
             progreso.setLiked(false);
             progreso.setVistas(0);
             progreso.setLikesAutomaticos(0);
+            progreso.setUltimaActualizacion(
+                    LocalDateTime.of(2026, 11, 9, 0, 59)
+            );
+            progreso.setSeguidoresUltimaActualizacion(seguidores);
 
             progresos.put(id, progreso);
         }
@@ -150,15 +174,18 @@ class LikesAutomaticosServiceTest {
         );
     }
 
-    private int obtenerLikes(Integer idUsuario, Integer idVideo) {
-        return progresos.get(new ProgresoVideoId(idUsuario, idVideo))
-                .getLikesAutomaticos();
+    private ProgresoVideo obtenerProgreso(
+            Integer idUsuario,
+            Integer idVideo) {
+
+        return progresos.get(new ProgresoVideoId(idUsuario, idVideo));
     }
 
-    private int totalJugador(Integer idUsuario) {
-        return progresos.entrySet().stream()
-                .filter(entrada -> entrada.getKey().getIdUsuario().equals(idUsuario))
-                .mapToInt(entrada -> entrada.getValue().getLikesAutomaticos())
-                .sum();
+    private int obtenerLikes(Integer idUsuario, Integer idVideo) {
+        return obtenerProgreso(idUsuario, idVideo).getLikesAutomaticos();
+    }
+
+    private int obtenerVistas(Integer idUsuario, Integer idVideo) {
+        return obtenerProgreso(idUsuario, idVideo).getVistas();
     }
 }

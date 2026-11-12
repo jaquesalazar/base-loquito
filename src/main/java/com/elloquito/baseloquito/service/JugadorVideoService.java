@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -76,6 +77,8 @@ public class JugadorVideoService {
             progreso.setLiked(false);
             progreso.setVistas(0);
             progreso.setLikesAutomaticos(0);
+            progreso.setUltimaActualizacion(LocalDateTime.now());
+            progreso.setSeguidoresUltimaActualizacion(usuario.getSeguidores());
 
             progresoVideoRepository.save(progreso);
         }

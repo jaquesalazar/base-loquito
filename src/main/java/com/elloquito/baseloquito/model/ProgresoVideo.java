@@ -1,5 +1,7 @@
 package com.elloquito.baseloquito.model;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -34,6 +36,12 @@ public class ProgresoVideo {
 
     @Column(name = "likes_automaticos", nullable = false)
     private Integer likesAutomaticos = 0;
+
+    @Column(name = "ultima_actualizacion", nullable = false)
+    private LocalDateTime ultimaActualizacion;
+
+    @Column(name = "seguidores_ultima_actualizacion", nullable = false)
+    private Integer seguidoresUltimaActualizacion = 0;
 
     public ProgresoVideo() {
     }
@@ -84,5 +92,21 @@ public class ProgresoVideo {
 
     public void setLikesAutomaticos(Integer likesAutomaticos) {
         this.likesAutomaticos = likesAutomaticos;
+    }
+
+    public LocalDateTime getUltimaActualizacion() {
+        return ultimaActualizacion;
+    }
+
+    public void setUltimaActualizacion(LocalDateTime ultimaActualizacion) {
+        this.ultimaActualizacion = ultimaActualizacion;
+    }
+
+    public Integer getSeguidoresUltimaActualizacion() {
+        return seguidoresUltimaActualizacion;
+    }
+
+    public void setSeguidoresUltimaActualizacion(Integer seguidoresUltimaActualizacion) {
+        this.seguidoresUltimaActualizacion = seguidoresUltimaActualizacion;
     }
 }
