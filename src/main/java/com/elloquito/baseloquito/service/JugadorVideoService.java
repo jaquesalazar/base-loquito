@@ -1,5 +1,7 @@
 package com.elloquito.baseloquito.service;
 
+// Servicio para administrar los videos asignados a cada jugador.
+
 import com.elloquito.baseloquito.model.JugadorVideo;
 import com.elloquito.baseloquito.model.JugadorVideoId;
 import com.elloquito.baseloquito.model.ProgresoVideo;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @Service
@@ -37,7 +40,7 @@ public class JugadorVideoService {
     }
 
     @Transactional
-    public JugadorVideo asignarVideo(Integer idUsuario, Integer idVideo) {
+    public JugadorVideo asignarVideo(Integer idUsuario, Integer idVideo){
 
         Usuario usuario = entityManager.find(Usuario.class, idUsuario);
         Video video = entityManager.find(Video.class, idVideo);
@@ -77,7 +80,9 @@ public class JugadorVideoService {
             progreso.setLiked(false);
             progreso.setVistas(0);
             progreso.setLikesAutomaticos(0);
-            progreso.setUltimaActualizacion(LocalDateTime.now());
+            progreso.setUltimaActualizacion(
+                    LocalDateTime.now(ZoneOffset.UTC)
+            );
             progreso.setSeguidoresUltimaActualizacion(usuario.getSeguidores());
 
             progresoVideoRepository.save(progreso);
@@ -87,7 +92,7 @@ public class JugadorVideoService {
     }
 
     @Transactional(readOnly = true)
-    public List<JugadorVideo> obtenerVideosPorJugador(Integer idUsuario) {
+    public List<JugadorVideo> obtenerVideosPorJugador(Integer idUsuario){
 
         Usuario usuario = entityManager.find(Usuario.class, idUsuario);
 

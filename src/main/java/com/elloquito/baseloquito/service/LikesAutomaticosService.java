@@ -12,6 +12,7 @@ import jakarta.transaction.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -32,7 +33,7 @@ public class LikesAutomaticosService {
 
     @Transactional
     public void generarLikesPorMinuto() {
-        generarLikesPorMinuto(LocalDateTime.now());
+        generarLikesPorMinuto(LocalDateTime.now(ZoneOffset.UTC));
     }
 
     @Transactional
