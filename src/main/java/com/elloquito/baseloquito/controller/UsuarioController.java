@@ -73,7 +73,6 @@ public class UsuarioController {
     @PostMapping("/acceso")
     public UsuarioResponse accederUsuario(
             @Valid @RequestBody AccesoRequest datos) {
-        System.out.println(datos.toString());
         Usuario usuario = usuarioService.accederOCrearUsuario(datos.username());
 
         return convertirRespuesta(usuario);
